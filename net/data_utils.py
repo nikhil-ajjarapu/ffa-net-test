@@ -34,7 +34,7 @@ def tensorShow(tensors,titles=None):
 
 class OHAZE_Dataset(data.Dataset):
     def __init__(self,path,train,size=crop_size,format='_outdoor_GT.jpg'):
-        super(RESIDE_Dataset,self).__init__()
+        super(OHAZE_Dataset,self).__init__()
         self.size=size
         print('crop size',size)
         self.train=train
