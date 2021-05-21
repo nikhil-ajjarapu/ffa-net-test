@@ -1,4 +1,3 @@
-from net.data_utils import OHAZE_test_loader, OHAZE_train_loader
 import torch,os,sys,torchvision,argparse
 import torchvision.transforms as tfs
 from metrics import psnr,ssim
