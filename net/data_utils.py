@@ -32,6 +32,49 @@ def tensorShow(tensors,titles=None):
             ax.set_title(tit)
         plt.show()
 
+class OHAZE_Dataset(data.Dataset):
+    def __init__(self,path,train,size=crop_size,format='_outdoor_GT.jpg'):
+        super(RESIDE_Dataset,self).__init__()
+        self.size=size
+        print('crop size',size)
+        self.train=train
+        self.format=format
+        self.haze_imgs_dir=os.listdir(os.path.join(path,'ohaze-hazy-resized'))
+        self.haze_imgs=[os.path.join(path,'ohaze-hazy-resized',img) for img in self.haze_imgs_dir]
+        self.clear_dir=os.path.join(path,'ohaze-gt-resized')
+    def __getitem__(self, index):
+        haze=Image.open(self.haze_imgs[index])
+        if isinstance(self.size,int):
+            while haze.size[0]<self.size or haze.size[1]<self.size :
+                index=random.randint(0,20000)
+                haze=Image.open(self.haze_imgs[index])
+        img=self.haze_imgs[index]
+        id=img.split('/')[-1].split('_')[0]
+        clear_name=id+self.format
+        clear=Image.open(os.path.join(self.clear_dir,clear_name))
+        clear=tfs.CenterCrop(haze.size[::-1])(clear)
+        if not isinstance(self.size,str):
+            i,j,h,w=tfs.RandomCrop.get_params(haze,output_size=(self.size,self.size))
+            haze=FF.crop(haze,i,j,h,w)
+            clear=FF.crop(clear,i,j,h,w)
+        haze,clear=self.augData(haze.convert("RGB") ,clear.convert("RGB") )
+        return haze,clear
+    def augData(self,data,target):
+        if self.train:
+            rand_hor=random.randint(0,1)
+            rand_rot=random.randint(0,3)
+            data=tfs.RandomHorizontalFlip(rand_hor)(data)
+            target=tfs.RandomHorizontalFlip(rand_hor)(target)
+            if rand_rot:
+                data=FF.rotate(data,90*rand_rot)
+                target=FF.rotate(target,90*rand_rot)
+        data=tfs.ToTensor()(data)
+        data=tfs.Normalize(mean=[0.64, 0.6, 0.58],std=[0.14,0.15, 0.152])(data)
+        target=tfs.ToTensor()(target)
+        return  data ,target
+    def __len__(self):
+        return len(self.haze_imgs)
+
 class RESIDE_Dataset(data.Dataset):
     def __init__(self,path,train,size=crop_size,format='.png'):
         super(RESIDE_Dataset,self).__init__()
@@ -78,13 +121,16 @@ class RESIDE_Dataset(data.Dataset):
 import os
 pwd=os.getcwd()
 print(pwd)
-path='/home/zhilin007/VS/FFA-Net/data'#path to your 'data' folder
+path='/test_imgs/'#path to your 'data' folder
 
 ITS_train_loader=DataLoader(dataset=RESIDE_Dataset(path+'/RESIDE/ITS',train=True,size=crop_size),batch_size=BS,shuffle=True)
 ITS_test_loader=DataLoader(dataset=RESIDE_Dataset(path+'/RESIDE/SOTS/indoor',train=False,size='whole img'),batch_size=1,shuffle=False)
 
 OTS_train_loader=DataLoader(dataset=RESIDE_Dataset(path+'/RESIDE/OTS',train=True,format='.jpg'),batch_size=BS,shuffle=True)
 OTS_test_loader=DataLoader(dataset=RESIDE_Dataset(path+'/RESIDE/SOTS/outdoor',train=False,size='whole img',format='.png'),batch_size=1,shuffle=False)
+
+OHAZE_train_loader=DataLoader(dataset=OHAZE_Dataset(path+'/ohaze_data',train=True),batch_size=BS,shuffle=True)
+OHAZE_test_loader=DataLoader(dataset=OHAZE_Dataset(path+'/ohaze_data',train=False, size='whole img'),batch_size=1,shuffle=False)
 
 if __name__ == "__main__":
     pass
